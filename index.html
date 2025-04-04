@@ -188,6 +188,26 @@
       border: 1px solid #ccc;
       border-radius: 8px;
     }
+    /* Historique */
+    #history {
+      margin-top: 30px;
+      text-align: left;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      background: #fff;
+      padding: 15px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    #history ul {
+      list-style: none;
+      padding: 0;
+    }
+    #history li {
+      border-bottom: 1px solid #eee;
+      padding: 5px 0;
+    }
   </style>
 </head>
 <body>
@@ -231,9 +251,8 @@
     <input type="number" id="drawBallSpeed" value="500" min="10" max="5000" step="10">
   </div>
 
-  <!-- Boules tirées => On remplace "Boules tirées" par "Boules restantes" -->
+  <!-- Boules tirées -->
   <div class="drawn-container">
-    <!-- On va mettre un id sur le h2 pour le mettre à jour en direct : "Boules restantes (20/20)" -->
     <h2 id="remainingBallsLabel">Boules restantes (20/20)</h2>
     <div class="drawn-balls" id="drawn-balls"></div>
   </div>
@@ -266,6 +285,12 @@
     <ul id="statsList"></ul>
   </div>
 
+  <!-- Historique des 30 derniers tours -->
+  <div id="history">
+    <h2>Historique des 30 derniers tours</h2>
+    <ul id="historyList"></ul>
+  </div>
+
   <script>
     // ====================== VARIABLES GLOBALES ======================
     let totalTours = 0;
@@ -280,6 +305,9 @@
       pachinko: { allRed: 0, multipliers: [] },
       crazytime: { allRed: 0, multipliers: [] }
     };
+
+    // Historique des tours (dernier 30)
+    let historyRecords = [];
 
     // Pour auto spin en mode non-simulation
     let autoSpinInterval = null;
@@ -307,7 +335,7 @@
       }
       const result = [];
       for (let i = 0; i < count; i++) {
-        if (available.length === 0) break; 
+        if (available.length === 0) break;
         const idx = Math.floor(Math.random() * available.length);
         const val = available[idx];
         result.push(val);
@@ -367,21 +395,65 @@
       });
     }
 
+    // ====================== HISTORIQUE ======================
+    function updateHistoryDisplay() {
+      const historyList = document.getElementById("historyList");
+      historyList.innerHTML = "";
+      // Affichage du plus récent au plus ancien
+      historyRecords.slice().reverse().forEach(record => {
+        let bonusText = record.triggeredBonuses.length > 0
+          ? record.triggeredBonuses.map(b => {
+              if(record.multiBonus === b && record.multiValue)
+                return b + " (" + record.multiValue + "X)";
+              return b;
+            }).join(", ")
+          : "Aucun bonus";
+        const li = document.createElement("li");
+        li.innerHTML = "Tour " + record.round + " : " + bonusText;
+        historyList.appendChild(li);
+      });
+    }
+
+    function addHistoryRecord(round, triggeredBonuses, multiValue, multiBonus) {
+      const record = { round, triggeredBonuses, multiValue, multiBonus };
+      historyRecords.push(record);
+      if (historyRecords.length > 30) {
+        historyRecords.shift();
+      }
+      updateHistoryDisplay();
+    }
+
+    // ====================== AUTO SPIN ARRÊT ======================
+    function checkStopOnMultiplier(multiValue) {
+      const stopOnMultiplierCheckbox = document.getElementById("stopOnMultiplierCheckbox");
+      const stopOnMultiplierValue = parseInt(document.getElementById("stopOnMultiplierValue").value, 10);
+      if (stopOnMultiplierCheckbox.checked && multiValue === stopOnMultiplierValue) {
+        stopAutoSpin();
+      }
+    }
+
+    function stopAutoSpin() {
+      autoSpinActive = false;
+      if (autoSpinInterval !== null) {
+        clearInterval(autoSpinInterval);
+        autoSpinInterval = null;
+      }
+      document.getElementById("autoSpinButton").textContent = "Auto Spin";
+    }
+
     // ====================== SIMULATION DU TIRAGE ======================
     function simulateDrawnBalls(drawnBalls, usedNumbers, multiBonus, multiValue, callback) {
-      // Désactivation des boutons pendant la simulation
       document.getElementById("newTourButton").disabled = true;
       document.getElementById("autoSpinButton").disabled = true;
       document.getElementById("resetControl").disabled = true;
 
-      // On initialise l'affichage "Boules restantes (20/20)"
       const remainingLabel = document.getElementById("remainingBallsLabel");
       remainingLabel.textContent = `Boules restantes (20/20)`;
 
       const drawSpeed = parseInt(document.getElementById("drawBallSpeed").value) || 200;
       const drawnContainer = document.getElementById("drawn-balls");
       drawnContainer.innerHTML = "";
-      let i = 0;  // i représente combien de boules ont été déjà tirées
+      let i = 0;
 
       const intervalId = setInterval(() => {
         if (i < drawnBalls.length) {
@@ -394,22 +466,22 @@
           }
           drawnContainer.appendChild(div);
 
-          // Mise à jour du label "Boules restantes"
-          // Après avoir tiré i+1 boules, il en reste (20 - (i+1)) sur 20
-          const remaining = (drawnBalls.length - (i+1));
+          const remaining = (drawnBalls.length - (i + 1));
           remainingLabel.textContent = `Boules restantes (${remaining}/${drawnBalls.length})`;
-
-          // Mise à jour des bonus
           updateBonusMatches(number, multiBonus, multiValue);
-
           i++;
         } else {
           clearInterval(intervalId);
-          // Réactivation des boutons
           document.getElementById("newTourButton").disabled = false;
           document.getElementById("autoSpinButton").disabled = false;
           document.getElementById("resetControl").disabled = false;
-          if (callback) callback();
+          let triggeredBonuses = [];
+          ["coinflip", "cashhunt", "pachinko", "crazytime"].forEach(bonus => {
+            if (document.getElementById(bonus + "-ticket").classList.contains("all-red")) {
+              triggeredBonuses.push(bonus);
+            }
+          });
+          callback(triggeredBonuses);
         }
       }, drawSpeed);
     }
@@ -434,7 +506,9 @@
         const allRedCount = stats[bonus].allRed;
         const multiArray = stats[bonus].multipliers;
         let line = `<strong>${bonusDisplayName}</strong>: ${allRedCount} fois`;
-        if (multiArray.length > 0) line += ` (${multiArray.join(", ")})`;
+        if (multiArray.length > 0) {
+          line += ` (${multiArray.map(m => m + "x").join(", ")})`;
+        }
         statsHTML += `<li>${line}</li>`;
       });
       statsHTML += "<br>";
@@ -447,13 +521,11 @@
     // ====================== LOGIQUE PRINCIPALE DU TOUR ======================
     function nouveauTour() {
       totalTours++;
-      // Chaque tour dure entre 2 et 3 minutes
       const tourDuration = 2 + Math.random();
       totalMinutesSpent += tourDuration;
 
       const simulateMode = document.getElementById("simulateDrawing").checked;
       const drawnBalls = generateUniqueRandomNumbersNoOverlap(1, 60, 20, new Set());
-      // On garde l'ordre de tirage aléatoire (non trié)
 
       let multiBonus = null, multiValue = null;
       if (Math.random() < 0.35) {
@@ -470,7 +542,6 @@
       for (let bonus in bonusConfig) {
         const ticketElem = document.getElementById(bonus + "-ticket");
         ticketElem.classList.remove("all-red");
-        // Retirer anciens multiplicateurs
         const oldMultis = ticketElem.querySelectorAll(".multiplier");
         oldMultis.forEach(m => m.remove());
 
@@ -516,17 +587,16 @@
           }
           row.appendChild(ball);
         });
-        if (simulateMode) {
-          row.dataset.finalCount = finalCount;
-          row.dataset.matchCount = "0";
-        } else {
+        if (!simulateMode) {
           if (matchCount === finalCount) {
             stats[bonus].allRed++;
             ticketElem.classList.add("all-red");
             currentTurnAllRedCount++;
+            if (bonus === multiBonus && multiValue) {
+              stats[bonus].multipliers.push(multiValue);
+            }
           }
         }
-        // Afficher le multiplicateur sur le ticket s'il a été attribué
         if (bonus === multiBonus && multiValue) {
           const multiplierDiv = document.createElement("div");
           multiplierDiv.className = "multiplier";
@@ -538,18 +608,29 @@
       if (currentTurnAllRedCount === 2) twoBonusTours++;
       if (currentTurnAllRedCount === 3) threeBonusTours++;
 
-      // Affichage des boules tirées
+      let triggeredBonuses = [];
+      ["coinflip", "cashhunt", "pachinko", "crazytime"].forEach(bonus => {
+        if (document.getElementById(bonus + "-ticket").classList.contains("all-red")) {
+          triggeredBonuses.push(bonus);
+        }
+      });
+
       if (simulateMode) {
-        simulateDrawnBalls(drawnBalls, usedNumbers, multiBonus, multiValue, function() {
+        simulateDrawnBalls(drawnBalls, usedNumbers, multiBonus, multiValue, function(triggeredBonusesSim) {
+          if (triggeredBonusesSim.includes(multiBonus) && multiValue) {
+            stats[multiBonus].multipliers.push(multiValue);
+            checkStopOnMultiplier(multiValue);
+          }
           updateStatsDisplay();
-          // En mode simulation et si auto spin est actif, on enchaîne le prochain tour
+          const finalTriggered = triggeredBonusesSim.length ? triggeredBonusesSim : triggeredBonuses;
+          addHistoryRecord(totalTours, finalTriggered, multiValue, multiBonus);
           if (autoSpinActive && document.getElementById("simulateDrawing").checked) {
             const speed = parseInt(document.getElementById("autoSpinSpeed").value) || 200;
             setTimeout(nouveauTour, speed);
           }
         });
       } else {
-        // Mode affichage immédiat
+        // Mode non-simulation
         const drawnContainer = document.getElementById("drawn-balls");
         drawnContainer.innerHTML = "";
         drawnBalls.forEach(num => {
@@ -561,11 +642,12 @@
           }
           drawnContainer.appendChild(div);
         });
-
-        // Puisque nous ne sommes pas en simulation, le label peut rester fixe :
         document.getElementById("remainingBallsLabel").textContent = "Boules restantes (0/20)";
-
         updateStatsDisplay();
+        addHistoryRecord(totalTours, triggeredBonuses, multiValue, multiBonus);
+        if (triggeredBonuses.includes(multiBonus) && multiValue) {
+          checkStopOnMultiplier(multiValue);
+        }
       }
     }
 
@@ -611,13 +693,13 @@
       stats.crazytime.allRed = 0;
       stats.crazytime.multipliers = [];
       document.getElementById("drawn-balls").innerHTML = "";
-      // Réinitialise l'étiquette
       document.getElementById("remainingBallsLabel").textContent = "Boules restantes (20/20)";
-
       ["coinflip", "cashhunt", "pachinko", "crazytime"].forEach(bonus => {
         document.getElementById(bonus + "-ticket").classList.remove("all-red");
       });
       updateStatsDisplay();
+      historyRecords = [];
+      updateHistoryDisplay();
       if (autoSpinInterval !== null) {
         clearInterval(autoSpinInterval);
         autoSpinInterval = null;
@@ -626,7 +708,6 @@
       document.getElementById("autoSpinButton").textContent = "Auto Spin";
     }
 
-    // Premier tour au chargement
     window.onload = nouveauTour;
   </script>
 </body>
