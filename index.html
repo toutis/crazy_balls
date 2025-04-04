@@ -285,9 +285,9 @@
     <ul id="statsList"></ul>
   </div>
 
-  <!-- Historique des 30 derniers tours -->
+  <!-- Historique des 50 derniers tours -->
   <div id="history">
-    <h2>Historique des 30 derniers tours</h2>
+    <h2>Historique des 50 derniers tours</h2>
     <ul id="historyList"></ul>
   </div>
 
@@ -416,7 +416,7 @@
     function addHistoryRecord(round, triggeredBonuses, multiValue, multiBonus) {
       const record = { round, triggeredBonuses, multiValue, multiBonus };
       historyRecords.push(record);
-      if (historyRecords.length > 30) {
+      if (historyRecords.length > 50) {
         historyRecords.shift();
       }
       updateHistoryDisplay();
