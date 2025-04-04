@@ -231,9 +231,10 @@
     <input type="number" id="drawBallSpeed" value="500" min="10" max="5000" step="10">
   </div>
 
-  <!-- Boules tirées -->
+  <!-- Boules tirées => On remplace "Boules tirées" par "Boules restantes" -->
   <div class="drawn-container">
-    <h2>Boules tirées (20 boules)</h2>
+    <!-- On va mettre un id sur le h2 pour le mettre à jour en direct : "Boules restantes (20/20)" -->
+    <h2 id="remainingBallsLabel">Boules restantes (20/20)</h2>
     <div class="drawn-balls" id="drawn-balls"></div>
   </div>
 
@@ -373,19 +374,34 @@
       document.getElementById("autoSpinButton").disabled = true;
       document.getElementById("resetControl").disabled = true;
 
+      // On initialise l'affichage "Boules restantes (20/20)"
+      const remainingLabel = document.getElementById("remainingBallsLabel");
+      remainingLabel.textContent = `Boules restantes (20/20)`;
+
       const drawSpeed = parseInt(document.getElementById("drawBallSpeed").value) || 200;
       const drawnContainer = document.getElementById("drawn-balls");
       drawnContainer.innerHTML = "";
-      let i = 0;
+      let i = 0;  // i représente combien de boules ont été déjà tirées
+
       const intervalId = setInterval(() => {
         if (i < drawnBalls.length) {
           const number = drawnBalls[i];
           const div = document.createElement("div");
           div.className = "drawn-ball";
           div.textContent = number;
-          if (usedNumbers.has(number)) div.classList.add("in-bonus");
+          if (usedNumbers.has(number)) {
+            div.classList.add("in-bonus");
+          }
           drawnContainer.appendChild(div);
+
+          // Mise à jour du label "Boules restantes"
+          // Après avoir tiré i+1 boules, il en reste (20 - (i+1)) sur 20
+          const remaining = (drawnBalls.length - (i+1));
+          remainingLabel.textContent = `Boules restantes (${remaining}/${drawnBalls.length})`;
+
+          // Mise à jour des bonus
           updateBonusMatches(number, multiBonus, multiValue);
+
           i++;
         } else {
           clearInterval(intervalId);
@@ -431,6 +447,7 @@
     // ====================== LOGIQUE PRINCIPALE DU TOUR ======================
     function nouveauTour() {
       totalTours++;
+      // Chaque tour dure entre 2 et 3 minutes
       const tourDuration = 2 + Math.random();
       totalMinutesSpent += tourDuration;
 
@@ -525,12 +542,14 @@
       if (simulateMode) {
         simulateDrawnBalls(drawnBalls, usedNumbers, multiBonus, multiValue, function() {
           updateStatsDisplay();
+          // En mode simulation et si auto spin est actif, on enchaîne le prochain tour
           if (autoSpinActive && document.getElementById("simulateDrawing").checked) {
             const speed = parseInt(document.getElementById("autoSpinSpeed").value) || 200;
             setTimeout(nouveauTour, speed);
           }
         });
       } else {
+        // Mode affichage immédiat
         const drawnContainer = document.getElementById("drawn-balls");
         drawnContainer.innerHTML = "";
         drawnBalls.forEach(num => {
@@ -542,6 +561,10 @@
           }
           drawnContainer.appendChild(div);
         });
+
+        // Puisque nous ne sommes pas en simulation, le label peut rester fixe :
+        document.getElementById("remainingBallsLabel").textContent = "Boules restantes (0/20)";
+
         updateStatsDisplay();
       }
     }
@@ -588,6 +611,9 @@
       stats.crazytime.allRed = 0;
       stats.crazytime.multipliers = [];
       document.getElementById("drawn-balls").innerHTML = "";
+      // Réinitialise l'étiquette
+      document.getElementById("remainingBallsLabel").textContent = "Boules restantes (20/20)";
+
       ["coinflip", "cashhunt", "pachinko", "crazytime"].forEach(bonus => {
         document.getElementById(bonus + "-ticket").classList.remove("all-red");
       });
@@ -600,6 +626,7 @@
       document.getElementById("autoSpinButton").textContent = "Auto Spin";
     }
 
+    // Premier tour au chargement
     window.onload = nouveauTour;
   </script>
 </body>
