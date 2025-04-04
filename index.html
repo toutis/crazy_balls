@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Crazy Multiplier Spin – La Magie des Bonus</title>
+  <style>
+    body {
+      margin: 20px;
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1em;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #333;
+      color: #fff;
+      margin: 5px;
+    }
+    button:hover {
+      background: #555;
+    }
+    /* Contrôle de la vitesse d'Auto Spin */
+    #speedControl {
+      margin: 10px;
+    }
+    /* Contrôle pour arrêter Auto Spin après un certain temps */
+    #autoStopControl {
+      margin: 10px;
+      font-size: 0.9em;
+    }
+    #autoStopControl input[type="number"] {
+      width: 50px;
+    }
+    /* Contrôle pour stopper Auto Spin sur multiplicateur All Red spécifique */
+    #stopOnMultiplierControl {
+      margin: 10px;
+      font-size: 0.9em;
+    }
+    #stopOnMultiplierControl input[type="number"] {
+      width: 50px;
+    }
+    /* Nouveau contrôle : Simulation en temps réel du tirage boule par boule */
+    #realTimeSimulationControl {
+      margin: 10px;
+      font-size: 0.9em;
+    }
+    /* Bouton Reset */
+    #resetControl {
+      margin: 10px;
+    }
+    /* Conteneur des 20 boules tirées */
+    .drawn-container {
+      margin-bottom: 30px;
+    }
+    .drawn-container h2 {
+      margin-bottom: 10px;
+    }
+    .drawn-balls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 5px;
+    }
+    .drawn-ball {
+      background: #fff;
+      color: #000;
+      border: 2px solid #333;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      line-height: 36px;
+      font-weight: bold;
+    }
+    /* Les boules tirées présentes dans un bonus => fond rouge discret */
+    .drawn-ball.in-bonus {
+      background: #ffcccc;
+    }
+    /* Conteneur principal pour les bonus */
+    .tickets-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+    }
+    /* Chaque ticket */
+    .ticket {
+      width: 220px;
+      height: 140px;
+      border-radius: 8px;
+      color: #fff;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border: 2px solid transparent;
+    }
+    /* Contour doré extérieur pour All Red */
+    .ticket.all-red {
+      box-shadow: 0 0 0 5px gold;
+    }
+    .ticket .title {
+      text-align: center;
+      font-size: 1.2em;
+      letter-spacing: 1px;
+      margin-bottom: 5px;
+    }
+    /* Rangée des boules bonus */
+    .ticket .bonus-row {
+      display: flex;
+      justify-content: center;
+      gap: 5px;
+    }
+    /* Boules bonus */
+    .bonus-ball {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 0.9em;
+      border: 2px solid #999;
+    }
+    /* Boules numériques */
+    .number-ball {
+      background: #fff;
+      color: #000;
+    }
+    .match {
+      background: #d14b3f !important;
+      color: #fff !important;
+      border: 2px solid #900;
+    }
+    .no-match {
+      background: #fff !important;
+      color: #000 !important;
+    }
+    /* Boules "maison" */
+    .house-ball {
+      background: #d14b3f;
+      color: #fff;
+      border: 2px solid #900;
+      font-size: 1em;
+    }
+    /* Couleurs de fond pour chaque bonus */
+    .coinflip {
+      background: linear-gradient(135deg, #1f5790, #3b8cbf);
+    }
+    .cashhunt {
+      background: linear-gradient(135deg, #2f7d2f, #4eb64e);
+    }
+    .pachinko {
+      background: linear-gradient(135deg, #7b3b7b, #b36fb3);
+    }
+    .crazytime {
+      background: linear-gradient(135deg, #b32b2b, #e74c3c);
+    }
+    /* Style du multiplicateur (toujours jaune) */
+    .multiplier {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      color: #ffea00;
+      font-weight: bold;
+      font-size: 2em;
+      text-shadow: 1px 1px 2px #000;
+    }
+    /* Section des statistiques */
+    #stats {
+      margin-top: 30px;
+      text-align: left;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      background: #fff;
+      padding: 15px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Crazy Multiplier Spin – La Magie des Bonus</h1>
+  
+  <!-- Boutons -->
+  <button id="newTourButton" onclick="nouveauTour()">Nouveau tour</button>
+  <button id="autoSpinButton" onclick="toggleAutoSpin()">Auto Spin</button>
+  <button id="resetControl" onclick="resetSimulation()">Reset</button>
+  
+  <!-- Vitesse entre deux tours (Auto Spin) -->
+  <div id="speedControl">
+    <label for="autoSpinSpeed">Vitesse Auto Spin (ms) :</label>
+    <input type="number" id="autoSpinSpeed" value="200" min="10" max="5000" step="10">
+  </div>
+
+  <!-- Contrôle pour arrêter Auto Spin après un certain temps -->
+  <div id="autoStopControl">
+    <input type="checkbox" id="autoStopCheckbox">
+    <label for="autoStopCheckbox">Arrêter Auto Spin après </label>
+    <input type="number" id="autoStopHours" value="1" min="1" step="1"> 
+    <label for="autoStopHours"> heure(s)</label>
+  </div>
+
+  <!-- Contrôle pour stopper Auto Spin sur multiplicateur All Red spécifique -->
+  <div id="stopOnMultiplierControl">
+    <input type="checkbox" id="stopOnMultiplierCheckbox">
+    <label for="stopOnMultiplierCheckbox">
+      Arrêter Auto Spin dès qu'on obtient un multi 
+    </label>
+    <input type="number" id="stopOnMultiplierValue" value="7" min="1" step="1"> 
+    <label for="stopOnMultiplierValue">X</label>
+  </div>
+
+  <!-- Contrôle pour la simulation en temps réel + vitesse du tirage boule par boule -->
+  <div id="realTimeSimulationControl">
+    <input type="checkbox" id="simulateDrawing">
+    <label for="simulateDrawing">Simulation en temps réel du tirage boule par boule</label>
+    <br>
+    <label for="drawBallSpeed">Vitesse du tirage (ms) :</label>
+    <input type="number" id="drawBallSpeed" value="500" min="10" max="5000" step="10">
+  </div>
+
+  <!-- Boules tirées -->
+  <div class="drawn-container">
+    <h2>Boules tirées (20 boules)</h2>
+    <div class="drawn-balls" id="drawn-balls"></div>
+  </div>
+
+  <!-- Tickets Bonus -->
+  <div class="tickets-container">
+    <div class="ticket coinflip" id="coinflip-ticket">
+      <div class="title">COIN FLIP</div>
+      <div class="bonus-row" id="coinflip-row"></div>
+    </div>
+    <div class="ticket cashhunt" id="cashhunt-ticket">
+      <div class="title">CASH HUNT</div>
+      <div class="bonus-row" id="cashhunt-row"></div>
+    </div>
+    <div class="ticket pachinko" id="pachinko-ticket">
+      <div class="title">PACHINKO</div>
+      <div class="bonus-row" id="pachinko-row"></div>
+    </div>
+    <div class="ticket crazytime" id="crazytime-ticket">
+      <div class="title">CRAZY TIME</div>
+      <div class="bonus-row" id="crazytime-row"></div>
+    </div>
+  </div>
+
+  <!-- Statistiques -->
+  <div id="stats">
+    <h2>Statistiques</h2>
+    <p>Total tours: <span id="totalTours">0</span></p>
+    <p>Temps total passé: <span id="totalTime">0 jours, 0 heures, 0 minutes</span></p>
+    <ul id="statsList"></ul>
+  </div>
+
+  <script>
+    // ====================== VARIABLES GLOBALES ======================
+    let totalTours = 0;
+    let winningTours = 0;      // tours avec au moins 1 bonus All Red
+    let twoBonusTours = 0;     // tours avec 2 bonus All Red
+    let threeBonusTours = 0;   // tours avec 3 bonus All Red
+
+    // Stats par bonus
+    const stats = {
+      coinflip: { allRed: 0, multipliers: [] },
+      cashhunt: { allRed: 0, multipliers: [] },
+      pachinko: { allRed: 0, multipliers: [] },
+      crazytime: { allRed: 0, multipliers: [] }
+    };
+
+    // Pour auto spin en mode non-simulation
+    let autoSpinInterval = null;
+    // Pour auto spin en mode simulation (chaîne récursive)
+    let autoSpinActive = false;
+
+    // Temps total (en minutes)
+    let totalMinutesSpent = 0;
+
+    // ====================== FONCTIONS UTILES ======================
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    function generateUniqueRandomNumbersNoOverlap(min, max, count, usedNumbers) {
+      const available = [];
+      for (let i = min; i <= max; i++) {
+        if (!usedNumbers.has(i)) {
+          available.push(i);
+        }
+      }
+      const result = [];
+      for (let i = 0; i < count; i++) {
+        if (available.length === 0) break; 
+        const idx = Math.floor(Math.random() * available.length);
+        const val = available[idx];
+        result.push(val);
+        usedNumbers.add(val);
+        available.splice(idx, 1);
+      }
+      return result;
+    }
+
+    function getRandomMultiplier() {
+      const r = Math.random() * 100;
+      if (r < 50)  return 2;   // 50%
+      if (r < 80)  return 3;   // 30%
+      if (r < 90)  return 5;   // 10%
+      if (r < 95)  return 7;   // 5%
+      if (r < 97)  return 15;  // 2%
+      if (r < 99)  return 25;  // 2%
+      return 50;               // 1%
+    }
+
+    function getRandomHouses(bonus) {
+      let maxHouses = 0;
+      switch(bonus) {
+        case "coinflip":  maxHouses = 1; break;
+        case "cashhunt":  maxHouses = 2; break;
+        case "pachinko":  maxHouses = 2; break;
+        case "crazytime": maxHouses = 3; break;
+      }
+      let housesCount = 0;
+      for (let i = 0; i < maxHouses; i++) {
+        if (Math.random() < 0.3) housesCount++;
+      }
+      return housesCount;
+    }
+
+    // ====================== MISE À JOUR DES BONUS ======================
+    function updateBonusMatches(newNumber, multiBonus, multiValue) {
+      const bonusKeys = ["coinflip", "cashhunt", "pachinko", "crazytime"];
+      bonusKeys.forEach(bonus => {
+        const row = document.getElementById(bonus + "-row");
+        const balls = row.querySelectorAll(".bonus-ball.number-ball");
+        balls.forEach(ball => {
+          if (ball.dataset.number == newNumber && ball.dataset.matched !== "true") {
+            ball.classList.remove("no-match");
+            ball.classList.add("match");
+            ball.dataset.matched = "true";
+            let count = parseInt(row.dataset.matchCount) || 0;
+            count++;
+            row.dataset.matchCount = count;
+            const finalCount = parseInt(row.dataset.finalCount);
+            if (count === finalCount && !document.getElementById(bonus + "-ticket").classList.contains("all-red")) {
+              document.getElementById(bonus + "-ticket").classList.add("all-red");
+              stats[bonus].allRed++;
+              if (bonus === multiBonus && multiValue) {
+                let multiString = multiValue + "X";
+                stats[bonus].multipliers.push(multiString);
+                const stopMultiCheckbox = document.getElementById("stopOnMultiplierCheckbox");
+                if (stopMultiCheckbox.checked) {
+                  const stopMultiValue = parseFloat(document.getElementById("stopOnMultiplierValue").value);
+                  if (multiValue === stopMultiValue) {
+                    if (autoSpinInterval !== null) {
+                      clearInterval(autoSpinInterval);
+                      autoSpinInterval = null;
+                    }
+                    autoSpinActive = false;
+                    document.getElementById("autoSpinButton").textContent = "Auto Spin";
+                    alert("Auto Spin arrêté : Bonus All Red avec multiplicateur " + multiValue + "X obtenu.");
+                  }
+                }
+              }
+            }
+          }
+        });
+      });
+    }
+
+    // ====================== SIMULATION DU TIRAGE ======================
+    function simulateDrawnBalls(drawnBalls, usedNumbers, multiBonus, multiValue, callback) {
+      // Désactivation des boutons pendant la simulation
+      document.getElementById("newTourButton").disabled = true;
+      document.getElementById("autoSpinButton").disabled = true;
+      document.getElementById("resetControl").disabled = true;
+
+      // Récupère la vitesse de tirage boule par boule (champ drawBallSpeed)
+      const drawSpeed = parseInt(document.getElementById("drawBallSpeed").value) || 200;
+
+      const drawnContainer = document.getElementById("drawn-balls");
+      drawnContainer.innerHTML = "";
+      let i = 0;
+      const intervalId = setInterval(() => {
+        if (i < drawnBalls.length) {
+          const number = drawnBalls[i];
+          const div = document.createElement("div");
+          div.className = "drawn-ball";
+          div.textContent = number;
+          if (usedNumbers.has(number)) div.classList.add("in-bonus");
+          drawnContainer.appendChild(div);
+          updateBonusMatches(number, multiBonus, multiValue);
+          i++;
+        } else {
+          clearInterval(intervalId);
+          // Réactivation des boutons une fois la simulation terminée
+          document.getElementById("newTourButton").disabled = false;
+          document.getElementById("autoSpinButton").disabled = false;
+          document.getElementById("resetControl").disabled = false;
+          if (callback) callback();
+        }
+      }, drawSpeed);
+    }
+
+    // ====================== MISE À JOUR DES STATS ======================
+    function updateStatsDisplay() {
+      document.getElementById("totalTours").textContent = totalTours;
+      const days = Math.floor(totalMinutesSpent / (60 * 24));
+      const remainAfterDays = totalMinutesSpent % (60 * 24);
+      const hours = Math.floor(remainAfterDays / 60);
+      const minutes = Math.floor(remainAfterDays % 60);
+      document.getElementById("totalTime").textContent =
+        days + " jours, " + hours + " heures, " + minutes + " minutes";
+
+      let statsHTML = "";
+      const bonusOrder = ["coinflip", "cashhunt", "pachinko", "crazytime"];
+      bonusOrder.forEach(bonus => {
+        let bonusDisplayName = (bonus === "coinflip") ? "Coin Flip" :
+                                (bonus === "cashhunt") ? "Cash Hunt" :
+                                (bonus === "pachinko") ? "Pachinko" :
+                                (bonus === "crazytime") ? "Crazy Time" : bonus;
+        const allRedCount = stats[bonus].allRed;
+        const multiArray = stats[bonus].multipliers;
+        let line = `<strong>${bonusDisplayName}</strong>: ${allRedCount} fois`;
+        if (multiArray.length > 0) line += ` (${multiArray.join(", ")})`;
+        statsHTML += `<li>${line}</li>`;
+      });
+      statsHTML += "<br>";
+      statsHTML += `<li>Tours avec 1 bonus : ${winningTours}</li>`;
+      statsHTML += `<li>Tours avec 2 bonus : ${twoBonusTours}</li>`;
+      statsHTML += `<li>Tours avec 3 bonus : ${threeBonusTours}</li>`;
+      document.getElementById("statsList").innerHTML = statsHTML;
+    }
+
+    // ====================== LOGIQUE PRINCIPALE DU TOUR ======================
+    function nouveauTour() {
+      totalTours++;
+      const tourDuration = 2 + Math.random();
+      totalMinutesSpent += tourDuration;
+
+      const simulateMode = document.getElementById("simulateDrawing").checked;
+      const drawnBalls = generateUniqueRandomNumbersNoOverlap(1, 60, 20, new Set());
+      // On ne trie pas : on garde l'ordre de tirage aléatoire
+
+      let multiBonus = null, multiValue = null;
+      if (Math.random() < 0.35) {
+        const bonusKeys = ["coinflip", "cashhunt", "pachinko", "crazytime"];
+        multiBonus = bonusKeys[Math.floor(Math.random() * bonusKeys.length)];
+        multiValue = getRandomMultiplier();
+      }
+
+      const bonusConfig = { coinflip: 3, cashhunt: 4, pachinko: 4, crazytime: 5 };
+      let currentTurnAllRedCount = 0;
+      const usedNumbers = new Set();
+
+      // Configuration de chaque bonus
+      for (let bonus in bonusConfig) {
+        const ticketElem = document.getElementById(bonus + "-ticket");
+        ticketElem.classList.remove("all-red");
+        const oldMultis = ticketElem.querySelectorAll(".multiplier");
+        oldMultis.forEach(m => m.remove());
+
+        const housesCount = getRandomHouses(bonus);
+        let baseCount = bonusConfig[bonus];
+        let finalCount = baseCount - housesCount;
+        if (finalCount < 1) finalCount = 1;
+
+        const bonusNumbers = generateUniqueRandomNumbersNoOverlap(1, 60, finalCount, usedNumbers);
+        const allBalls = [];
+        bonusNumbers.forEach(n => allBalls.push({ type: 'number', value: n }));
+        for (let i = 0; i < housesCount; i++) {
+          allBalls.push({ type: 'house' });
+        }
+        shuffle(allBalls);
+
+        let matchCount = 0;
+        const row = document.getElementById(bonus + "-row");
+        row.innerHTML = "";
+        allBalls.forEach(item => {
+          const ball = document.createElement("div");
+          ball.className = "bonus-ball";
+          if (item.type === 'number') {
+            ball.classList.add("number-ball");
+            ball.textContent = item.value;
+            ball.dataset.number = item.value;
+            if (!simulateMode) {
+              // Mode immédiat : on sait déjà quelles boules ont été tirées
+              if (drawnBalls.includes(item.value)) {
+                ball.classList.add("match");
+                matchCount++;
+              } else {
+                ball.classList.add("no-match");
+              }
+            } else {
+              // Mode simulation : on démarre en "no-match"
+              ball.classList.add("no-match");
+              ball.dataset.matched = "false";
+            }
+          } else {
+            // Boule "maison"
+            ball.classList.add("house-ball");
+            ball.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+              <path d="M12 3l-9 8h3v9h12v-9h3l-9-8z"/>
+            </svg>`;
+          }
+          row.appendChild(ball);
+        });
+        if (simulateMode) {
+          // On stocke dans row le nombre de numéros attendus
+          row.dataset.finalCount = finalCount;
+          row.dataset.matchCount = "0";
+        } else {
+          // Vérifier immédiatement si le bonus est All Red
+          if (matchCount === finalCount) {
+            stats[bonus].allRed++;
+            ticketElem.classList.add("all-red");
+            currentTurnAllRedCount++;
+            if (bonus === multiBonus && multiValue) {
+              let multiString = multiValue + "X";
+              stats[bonus].multipliers.push(multiString);
+              const stopMultiCheckbox = document.getElementById("stopOnMultiplierCheckbox");
+              if (stopMultiCheckbox.checked) {
+                const stopMultiValue = parseFloat(document.getElementById("stopOnMultiplierValue").value);
+                if (multiValue === stopMultiValue) {
+                  if (autoSpinInterval !== null) {
+                    clearInterval(autoSpinInterval);
+                    autoSpinInterval = null;
+                  }
+                  autoSpinActive = false;
+                  document.getElementById("autoSpinButton").textContent = "Auto Spin";
+                  alert("Auto Spin arrêté : Bonus All Red avec multiplicateur " + multiValue + "X obtenu.");
+                }
+              }
+            }
+          }
+        }
+      }
+      if (currentTurnAllRedCount > 0) winningTours++;
+      if (currentTurnAllRedCount === 2) twoBonusTours++;
+      if (currentTurnAllRedCount === 3) threeBonusTours++;
+
+      // Affichage des boules tirées
+      if (simulateMode) {
+        simulateDrawnBalls(drawnBalls, usedNumbers, multiBonus, multiValue, function() {
+          updateStatsDisplay();
+          // En mode simulation et si auto spin est actif, on enchaîne le prochain tour
+          if (autoSpinActive && document.getElementById("simulateDrawing").checked) {
+            const speed = parseInt(document.getElementById("autoSpinSpeed").value) || 200;
+            setTimeout(nouveauTour, speed);
+          }
+        });
+      } else {
+        // Mode affichage immédiat
+        const drawnContainer = document.getElementById("drawn-balls");
+        drawnContainer.innerHTML = "";
+        drawnBalls.forEach(num => {
+          const div = document.createElement("div");
+          div.className = "drawn-ball";
+          div.textContent = num;
+          if (usedNumbers.has(num)) {
+            div.classList.add("in-bonus");
+          }
+          drawnContainer.appendChild(div);
+        });
+        updateStatsDisplay();
+      }
+    }
+
+    // ====================== AUTO SPIN ======================
+    function toggleAutoSpin() {
+      const btn = document.getElementById("autoSpinButton");
+      const simulateMode = document.getElementById("simulateDrawing").checked;
+      if (simulateMode) {
+        // En mode simulation, on utilise un enchaînement récursif
+        if (!autoSpinActive) {
+          autoSpinActive = true;
+          btn.textContent = "Stop Auto Spin";
+          // Démarrer un premier tour
+          nouveauTour();
+        } else {
+          autoSpinActive = false;
+          btn.textContent = "Auto Spin";
+        }
+      } else {
+        // Mode classique : setInterval
+        if (autoSpinInterval === null) {
+          const speed = parseInt(document.getElementById("autoSpinSpeed").value) || 1000;
+          autoSpinInterval = setInterval(nouveauTour, speed);
+          btn.textContent = "Stop Auto Spin";
+        } else {
+          clearInterval(autoSpinInterval);
+          autoSpinInterval = null;
+          btn.textContent = "Auto Spin";
+        }
+      }
+    }
+
+    // ====================== RESET ======================
+    function resetSimulation() {
+      totalTours = 0;
+      winningTours = 0;
+      twoBonusTours = 0;
+      threeBonusTours = 0;
+      totalMinutesSpent = 0;
+      stats.coinflip.allRed = 0;
+      stats.coinflip.multipliers = [];
+      stats.cashhunt.allRed = 0;
+      stats.cashhunt.multipliers = [];
+      stats.pachinko.allRed = 0;
+      stats.pachinko.multipliers = [];
+      stats.crazytime.allRed = 0;
+      stats.crazytime.multipliers = [];
+      document.getElementById("drawn-balls").innerHTML = "";
+      ["coinflip", "cashhunt", "pachinko", "crazytime"].forEach(bonus => {
+        document.getElementById(bonus + "-ticket").classList.remove("all-red");
+      });
+      updateStatsDisplay();
+      if (autoSpinInterval !== null) {
+        clearInterval(autoSpinInterval);
+        autoSpinInterval = null;
+      }
+      autoSpinActive = false;
+      document.getElementById("autoSpinButton").textContent = "Auto Spin";
+    }
+
+    // Premier tour au chargement
+    window.onload = nouveauTour;
+  </script>
+</body>
+</html>
