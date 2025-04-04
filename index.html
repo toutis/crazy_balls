@@ -285,9 +285,9 @@
     <ul id="statsList"></ul>
   </div>
 
-  <!-- Historique des 50 derniers tours -->
+  <!-- Historique des 30 derniers tours -->
   <div id="history">
-    <h2>Historique des 50 derniers tours</h2>
+    <h2>Historique des 30 derniers tours</h2>
     <ul id="historyList"></ul>
   </div>
 
@@ -399,7 +399,6 @@
     function updateHistoryDisplay() {
       const historyList = document.getElementById("historyList");
       historyList.innerHTML = "";
-      // Affichage du plus récent au plus ancien
       historyRecords.slice().reverse().forEach(record => {
         let bonusText = record.triggeredBonuses.length > 0
           ? record.triggeredBonuses.map(b => {
@@ -417,7 +416,7 @@
     function addHistoryRecord(round, triggeredBonuses, multiValue, multiBonus) {
       const record = { round, triggeredBonuses, multiValue, multiBonus };
       historyRecords.push(record);
-      if (historyRecords.length > 50) {
+      if (historyRecords.length > 30) {
         historyRecords.shift();
       }
       updateHistoryDisplay();
@@ -450,10 +449,8 @@
       const remainingLabel = document.getElementById("remainingBallsLabel");
       remainingLabel.textContent = `Boules restantes (20/20)`;
 
-      // Récupération de la vitesse d'Auto Spin
       const autoSpinSpeed = parseInt(document.getElementById("autoSpinSpeed").value) || 200;
 
-      // Si la vitesse est très basse, on affiche instantanément le tirage
       if(autoSpinSpeed < 50) {
         const drawnContainer = document.getElementById("drawn-balls");
         drawnContainer.innerHTML = "";
@@ -485,7 +482,6 @@
       const drawnContainer = document.getElementById("drawn-balls");
       drawnContainer.innerHTML = "";
       let i = 0;
-
       const intervalId = setInterval(() => {
         if (i < drawnBalls.length) {
           const number = drawnBalls[i];
@@ -496,7 +492,6 @@
             div.classList.add("in-bonus");
           }
           drawnContainer.appendChild(div);
-
           const remaining = (drawnBalls.length - (i + 1));
           remainingLabel.textContent = `Boules restantes (${remaining}/${drawnBalls.length})`;
           updateBonusMatches(number, multiBonus, multiValue);
@@ -569,7 +564,7 @@
       let currentTurnAllRedCount = 0;
       const usedNumbers = new Set();
 
-      // Pour chaque bonus
+      // Traitement pour chaque bonus
       for (let bonus in bonusConfig) {
         const ticketElem = document.getElementById(bonus + "-ticket");
         ticketElem.classList.remove("all-red");
@@ -583,7 +578,6 @@
 
         const row = document.getElementById(bonus + "-row");
         row.innerHTML = "";
-        // Pour que le mode simulation puisse savoir combien de boules doivent être en match
         row.dataset.finalCount = finalCount;
         row.dataset.matchCount = 0;
 
@@ -603,7 +597,6 @@
             ball.classList.add("number-ball");
             ball.textContent = item.value;
             ball.dataset.number = item.value;
-            // En mode non-simulation on vérifie directement le tirage
             if (!simulateMode) {
               if (drawnBalls.includes(item.value)) {
                 ball.classList.add("match");
@@ -640,9 +633,13 @@
           ticketElem.appendChild(multiplierDiv);
         }
       }
-      if (currentTurnAllRedCount > 0) winningTours++;
-      if (currentTurnAllRedCount === 2) twoBonusTours++;
-      if (currentTurnAllRedCount === 3) threeBonusTours++;
+
+      // Pour le mode non-simulation, on met à jour les compteurs via currentTurnAllRedCount
+      if (!simulateMode) {
+        if (currentTurnAllRedCount > 0) winningTours++;
+        if (currentTurnAllRedCount === 2) twoBonusTours++;
+        if (currentTurnAllRedCount === 3) threeBonusTours++;
+      }
 
       let triggeredBonuses = [];
       ["coinflip", "cashhunt", "pachinko", "crazytime"].forEach(bonus => {
@@ -653,6 +650,12 @@
 
       if (simulateMode) {
         simulateDrawnBalls(drawnBalls, usedNumbers, multiBonus, multiValue, function(triggeredBonusesSim) {
+          // Mise à jour pour le mode simulation avec les bonus déclenchés
+          const currentSimBonusCount = triggeredBonusesSim.length;
+          if (currentSimBonusCount > 0) winningTours++;
+          if (currentSimBonusCount === 2) twoBonusTours++;
+          if (currentSimBonusCount === 3) threeBonusTours++;
+          
           if (triggeredBonusesSim.includes(multiBonus) && multiValue) {
             stats[multiBonus].multipliers.push(multiValue);
             checkStopOnMultiplier(multiValue);
@@ -666,7 +669,6 @@
           }
         });
       } else {
-        // Mode non-simulation
         const drawnContainer = document.getElementById("drawn-balls");
         drawnContainer.innerHTML = "";
         drawnBalls.forEach(num => {
