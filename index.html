@@ -285,9 +285,9 @@
     <ul id="statsList"></ul>
   </div>
 
-  <!-- Historique des 30 derniers tours -->
+  <!-- Historique des 50 derniers tours -->
   <div id="history">
-    <h2>Historique des 30 derniers tours</h2>
+    <h2>Historique des 50 derniers tours</h2>
     <ul id="historyList"></ul>
   </div>
 
@@ -386,7 +386,7 @@
             count++;
             row.dataset.matchCount = count;
             const finalCount = parseInt(row.dataset.finalCount);
-            if (count === finalCount && !document.getElementById(bonus + "-ticket").classList.contains("all-red")) {
+            if (finalCount && count === finalCount && !document.getElementById(bonus + "-ticket").classList.contains("all-red")) {
               document.getElementById(bonus + "-ticket").classList.add("all-red");
               stats[bonus].allRed++;
             }
@@ -417,7 +417,7 @@
     function addHistoryRecord(round, triggeredBonuses, multiValue, multiBonus) {
       const record = { round, triggeredBonuses, multiValue, multiBonus };
       historyRecords.push(record);
-      if (historyRecords.length > 30) {
+      if (historyRecords.length > 50) {
         historyRecords.shift();
       }
       updateHistoryDisplay();
@@ -449,6 +449,37 @@
 
       const remainingLabel = document.getElementById("remainingBallsLabel");
       remainingLabel.textContent = `Boules restantes (20/20)`;
+
+      // Récupération de la vitesse d'Auto Spin
+      const autoSpinSpeed = parseInt(document.getElementById("autoSpinSpeed").value) || 200;
+
+      // Si la vitesse est très basse, on affiche instantanément le tirage
+      if(autoSpinSpeed < 50) {
+        const drawnContainer = document.getElementById("drawn-balls");
+        drawnContainer.innerHTML = "";
+        drawnBalls.forEach(number => {
+          const div = document.createElement("div");
+          div.className = "drawn-ball";
+          div.textContent = number;
+          if (usedNumbers.has(number)) {
+            div.classList.add("in-bonus");
+          }
+          drawnContainer.appendChild(div);
+          updateBonusMatches(number, multiBonus, multiValue);
+        });
+        remainingLabel.textContent = "Boules restantes (0/20)";
+        let triggeredBonuses = [];
+        ["coinflip", "cashhunt", "pachinko", "crazytime"].forEach(bonus => {
+          if (document.getElementById(bonus + "-ticket").classList.contains("all-red")) {
+            triggeredBonuses.push(bonus);
+          }
+        });
+        document.getElementById("newTourButton").disabled = false;
+        document.getElementById("autoSpinButton").disabled = false;
+        document.getElementById("resetControl").disabled = false;
+        callback(triggeredBonuses);
+        return;
+      }
 
       const drawSpeed = parseInt(document.getElementById("drawBallSpeed").value) || 200;
       const drawnContainer = document.getElementById("drawn-balls");
@@ -550,6 +581,12 @@
         let finalCount = baseCount - housesCount;
         if (finalCount < 1) finalCount = 1;
 
+        const row = document.getElementById(bonus + "-row");
+        row.innerHTML = "";
+        // Pour que le mode simulation puisse savoir combien de boules doivent être en match
+        row.dataset.finalCount = finalCount;
+        row.dataset.matchCount = 0;
+
         const bonusNumbers = generateUniqueRandomNumbersNoOverlap(1, 60, finalCount, usedNumbers);
         const allBalls = [];
         bonusNumbers.forEach(n => allBalls.push({ type: 'number', value: n }));
@@ -559,8 +596,6 @@
         shuffle(allBalls);
 
         let matchCount = 0;
-        const row = document.getElementById(bonus + "-row");
-        row.innerHTML = "";
         allBalls.forEach(item => {
           const ball = document.createElement("div");
           ball.className = "bonus-ball";
@@ -568,6 +603,7 @@
             ball.classList.add("number-ball");
             ball.textContent = item.value;
             ball.dataset.number = item.value;
+            // En mode non-simulation on vérifie directement le tirage
             if (!simulateMode) {
               if (drawnBalls.includes(item.value)) {
                 ball.classList.add("match");
