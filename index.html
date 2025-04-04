@@ -360,23 +360,6 @@
             if (count === finalCount && !document.getElementById(bonus + "-ticket").classList.contains("all-red")) {
               document.getElementById(bonus + "-ticket").classList.add("all-red");
               stats[bonus].allRed++;
-              if (bonus === multiBonus && multiValue) {
-                let multiString = multiValue + "X";
-                stats[bonus].multipliers.push(multiString);
-                const stopMultiCheckbox = document.getElementById("stopOnMultiplierCheckbox");
-                if (stopMultiCheckbox.checked) {
-                  const stopMultiValue = parseFloat(document.getElementById("stopOnMultiplierValue").value);
-                  if (multiValue === stopMultiValue) {
-                    if (autoSpinInterval !== null) {
-                      clearInterval(autoSpinInterval);
-                      autoSpinInterval = null;
-                    }
-                    autoSpinActive = false;
-                    document.getElementById("autoSpinButton").textContent = "Auto Spin";
-                    alert("Auto Spin arrêté : Bonus All Red avec multiplicateur " + multiValue + "X obtenu.");
-                  }
-                }
-              }
             }
           }
         });
@@ -390,9 +373,7 @@
       document.getElementById("autoSpinButton").disabled = true;
       document.getElementById("resetControl").disabled = true;
 
-      // Récupère la vitesse de tirage boule par boule (champ drawBallSpeed)
       const drawSpeed = parseInt(document.getElementById("drawBallSpeed").value) || 200;
-
       const drawnContainer = document.getElementById("drawn-balls");
       drawnContainer.innerHTML = "";
       let i = 0;
@@ -408,7 +389,7 @@
           i++;
         } else {
           clearInterval(intervalId);
-          // Réactivation des boutons une fois la simulation terminée
+          // Réactivation des boutons
           document.getElementById("newTourButton").disabled = false;
           document.getElementById("autoSpinButton").disabled = false;
           document.getElementById("resetControl").disabled = false;
@@ -455,7 +436,7 @@
 
       const simulateMode = document.getElementById("simulateDrawing").checked;
       const drawnBalls = generateUniqueRandomNumbersNoOverlap(1, 60, 20, new Set());
-      // On ne trie pas : on garde l'ordre de tirage aléatoire
+      // On garde l'ordre de tirage aléatoire (non trié)
 
       let multiBonus = null, multiValue = null;
       if (Math.random() < 0.35) {
@@ -468,10 +449,11 @@
       let currentTurnAllRedCount = 0;
       const usedNumbers = new Set();
 
-      // Configuration de chaque bonus
+      // Pour chaque bonus
       for (let bonus in bonusConfig) {
         const ticketElem = document.getElementById(bonus + "-ticket");
         ticketElem.classList.remove("all-red");
+        // Retirer anciens multiplicateurs
         const oldMultis = ticketElem.querySelectorAll(".multiplier");
         oldMultis.forEach(m => m.remove());
 
@@ -499,7 +481,6 @@
             ball.textContent = item.value;
             ball.dataset.number = item.value;
             if (!simulateMode) {
-              // Mode immédiat : on sait déjà quelles boules ont été tirées
               if (drawnBalls.includes(item.value)) {
                 ball.classList.add("match");
                 matchCount++;
@@ -507,12 +488,10 @@
                 ball.classList.add("no-match");
               }
             } else {
-              // Mode simulation : on démarre en "no-match"
               ball.classList.add("no-match");
               ball.dataset.matched = "false";
             }
           } else {
-            // Boule "maison"
             ball.classList.add("house-ball");
             ball.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="white">
               <path d="M12 3l-9 8h3v9h12v-9h3l-9-8z"/>
@@ -521,33 +500,21 @@
           row.appendChild(ball);
         });
         if (simulateMode) {
-          // On stocke dans row le nombre de numéros attendus
           row.dataset.finalCount = finalCount;
           row.dataset.matchCount = "0";
         } else {
-          // Vérifier immédiatement si le bonus est All Red
           if (matchCount === finalCount) {
             stats[bonus].allRed++;
             ticketElem.classList.add("all-red");
             currentTurnAllRedCount++;
-            if (bonus === multiBonus && multiValue) {
-              let multiString = multiValue + "X";
-              stats[bonus].multipliers.push(multiString);
-              const stopMultiCheckbox = document.getElementById("stopOnMultiplierCheckbox");
-              if (stopMultiCheckbox.checked) {
-                const stopMultiValue = parseFloat(document.getElementById("stopOnMultiplierValue").value);
-                if (multiValue === stopMultiValue) {
-                  if (autoSpinInterval !== null) {
-                    clearInterval(autoSpinInterval);
-                    autoSpinInterval = null;
-                  }
-                  autoSpinActive = false;
-                  document.getElementById("autoSpinButton").textContent = "Auto Spin";
-                  alert("Auto Spin arrêté : Bonus All Red avec multiplicateur " + multiValue + "X obtenu.");
-                }
-              }
-            }
           }
+        }
+        // Afficher le multiplicateur sur le ticket s'il a été attribué
+        if (bonus === multiBonus && multiValue) {
+          const multiplierDiv = document.createElement("div");
+          multiplierDiv.className = "multiplier";
+          multiplierDiv.textContent = multiValue + "X";
+          ticketElem.appendChild(multiplierDiv);
         }
       }
       if (currentTurnAllRedCount > 0) winningTours++;
@@ -558,14 +525,12 @@
       if (simulateMode) {
         simulateDrawnBalls(drawnBalls, usedNumbers, multiBonus, multiValue, function() {
           updateStatsDisplay();
-          // En mode simulation et si auto spin est actif, on enchaîne le prochain tour
           if (autoSpinActive && document.getElementById("simulateDrawing").checked) {
             const speed = parseInt(document.getElementById("autoSpinSpeed").value) || 200;
             setTimeout(nouveauTour, speed);
           }
         });
       } else {
-        // Mode affichage immédiat
         const drawnContainer = document.getElementById("drawn-balls");
         drawnContainer.innerHTML = "";
         drawnBalls.forEach(num => {
@@ -586,18 +551,15 @@
       const btn = document.getElementById("autoSpinButton");
       const simulateMode = document.getElementById("simulateDrawing").checked;
       if (simulateMode) {
-        // En mode simulation, on utilise un enchaînement récursif
         if (!autoSpinActive) {
           autoSpinActive = true;
           btn.textContent = "Stop Auto Spin";
-          // Démarrer un premier tour
           nouveauTour();
         } else {
           autoSpinActive = false;
           btn.textContent = "Auto Spin";
         }
       } else {
-        // Mode classique : setInterval
         if (autoSpinInterval === null) {
           const speed = parseInt(document.getElementById("autoSpinSpeed").value) || 1000;
           autoSpinInterval = setInterval(nouveauTour, speed);
@@ -638,7 +600,6 @@
       document.getElementById("autoSpinButton").textContent = "Auto Spin";
     }
 
-    // Premier tour au chargement
     window.onload = nouveauTour;
   </script>
 </body>
