@@ -339,9 +339,9 @@
     <ul id="statsList"></ul>
   </div>
 
-  <!-- Historique des 30 derniers tours -->
+  <!-- Historique des 50 derniers tours -->
   <div id="history">
-    <h2>Historique des 30 derniers tours</h2>
+    <h2>Historique des 50 derniers tours</h2>
     <ul id="historyList"></ul>
   </div>
 
@@ -400,16 +400,18 @@
       return result;
     }
 
-    function getRandomMultiplier() {
-      const r = Math.random() * 100;
-      if (r < 50)  return 2;   // 50%
-      if (r < 80)  return 3;   // 30%
-      if (r < 90)  return 5;   // 10%
-      if (r < 95)  return 7;   // 5%
-      if (r < 97)  return 15;  // 2%
-      if (r < 99)  return 25;  // 2%
-      return 50;               // 1%
-    }
+	function getRandomMultiplier() {
+	  const r = Math.random() * 100;
+	  if (r < 50)  return 2;        // 50%
+	  if (r < 75)  return 3;        // 25% (de 50 à 75)
+	  if (r < 88)  return 5;        // 13% (de 75 à 88)
+	  if (r < 93)  return 7;        // 5%  (de 88 à 93)
+	  if (r < 95)  return 10;       // 2%  (de 93 à 95)
+	  if (r < 97)  return 15;       // 2%  (de 95 à 97)
+	  if (r < 99)  return 25;       // 2%  (de 97 à 99)
+	  return 50;                   // 1%  (de 99 à 100)
+	}
+
 
     function getRandomHouses(bonus) {
       let maxHouses = 0;
@@ -624,36 +626,97 @@
     }
 
     // ====================== MISE À JOUR DES STATS ======================
-    function updateStatsDisplay() {
-      document.getElementById("totalTours").textContent = totalTours;
-      const days = Math.floor(totalMinutesSpent / (60 * 24));
-      const remainAfterDays = totalMinutesSpent % (60 * 24);
-      const hours = Math.floor(remainAfterDays / 60);
-      const minutes = Math.floor(remainAfterDays % 60);
-      document.getElementById("totalTime").textContent =
-        days + " jours, " + hours + " heures, " + minutes + " minutes";
+	function updateStatsDisplay() {
+	  document.getElementById("totalTours").textContent = totalTours;
+	  const days = Math.floor(totalMinutesSpent / (60 * 24));
+	  const remainAfterDays = totalMinutesSpent % (60 * 24);
+	  const hours = Math.floor(remainAfterDays / 60);
+	  const minutes = Math.floor(remainAfterDays % 60);
+	  document.getElementById("totalTime").textContent =
+		days + " jours, " + hours + " heures, " + minutes + " minutes";
 
-      let statsHTML = "";
-      const bonusOrder = ["coinflip", "cashhunt", "pachinko", "crazytime"];
-      bonusOrder.forEach(bonus => {
-        let bonusDisplayName = (bonus === "coinflip") ? "Coin Flip" :
-                                (bonus === "cashhunt") ? "Cash Hunt" :
-                                (bonus === "pachinko") ? "Pachinko" :
-                                (bonus === "crazytime") ? "Crazy Time" : bonus;
-        const allRedCount = stats[bonus].allRed;
-        const multiArray = stats[bonus].multipliers;
-        let line = `<strong>${bonusDisplayName}</strong>: ${allRedCount} fois`;
-        if (multiArray.length > 0) {
-          line += ` (${multiArray.map(m => m + "x").join(", ")})`;
-        }
-        statsHTML += `<li>${line}</li>`;
-      });
-      statsHTML += "<br>";
-      statsHTML += `<li>Tours avec 1 bonus : ${winningTours}</li>`;
-      statsHTML += `<li>Tours avec 2 bonus : ${twoBonusTours}</li>`;
-      statsHTML += `<li>Tours avec 3 bonus : ${threeBonusTours}</li>`;
-      document.getElementById("statsList").innerHTML = statsHTML;
-    }
+	  let statsHTML = "";
+	  const bonusOrder = ["coinflip", "cashhunt", "pachinko", "crazytime"];
+	  bonusOrder.forEach(bonus => {
+		let bonusDisplayName =
+		  bonus === "coinflip" ? "Coin Flip" :
+		  bonus === "cashhunt" ? "Cash Hunt" :
+		  bonus === "pachinko" ? "Pachinko" :
+		  bonus === "crazytime" ? "Crazy Time" : bonus;
+
+		const allRedCount = stats[bonus].allRed;
+		const multiArray = stats[bonus].multipliers;
+
+		let line = `<strong>${bonusDisplayName}</strong>: ${allRedCount} fois`;
+		// Afficher les multiplicateurs entre parenthèses en gris s'ils existent
+		if (multiArray.length > 0) {
+		  line += ` <span style="color: gray;">(${multiArray.map(m => m + "x").join(", ")})</span>`;
+		}
+		statsHTML += `<li>${line}</li>`;
+	  });
+
+	  statsHTML += "<br>";
+
+	  // Affichage des statistiques pour les tours avec 1, 2 et 3 bonus
+	  if (totalTours > 0) {
+		const oneBonusPct = ((winningTours / totalTours) * 100).toFixed(2);
+		const twoBonusPct = ((twoBonusTours / totalTours) * 100).toFixed(2);
+		const threeBonusPct = ((threeBonusTours / totalTours) * 100).toFixed(2);
+
+		statsHTML += `<li>Tours avec 1 bonus : ${winningTours} (${oneBonusPct}%)</li>`;
+		statsHTML += `<li>Tours avec 2 bonus : ${twoBonusTours} (${twoBonusPct}%)</li>`;
+		statsHTML += `<li>Tours avec 3 bonus : ${threeBonusTours} (${threeBonusPct}%)</li>`;
+	  } else {
+		statsHTML += `<li>Tours avec 1 bonus : 0 (0%)</li>`;
+		statsHTML += `<li>Tours avec 2 bonus : 0 (0%)</li>`;
+		statsHTML += `<li>Tours avec 3 bonus : 0 (0%)</li>`;
+	  }
+
+	  // Ajout d'une ligne avec deux sauts de ligne avant l'affichage détaillé des multiplicateurs
+	  statsHTML += "<br>";
+
+	  // Fusionner tous les multiplicateurs en un seul tableau
+	  const allMultipliers = [
+		...stats.coinflip.multipliers,
+		...stats.cashhunt.multipliers,
+		...stats.pachinko.multipliers,
+		...stats.crazytime.multipliers
+	  ];
+
+	  // Comptage de la fréquence de chaque multiplicateur
+	  const freq = {};
+	  allMultipliers.forEach(m => {
+		freq[m] = (freq[m] || 0) + 1;
+	  });
+
+	  // Si on n'a joué aucun tour
+	  if (totalTours === 0) {
+		statsHTML += `<li>Tours avec un multi : 0 (0%)</li>`;
+	  } else {
+		// Sinon on calcule le total
+		const totalMultiBonus = allMultipliers.length;
+		const multiBonusPct = ((totalMultiBonus / totalTours) * 100).toFixed(2);
+
+		// Afficher la première ligne récapitulative
+		statsHTML += `<li>Tours avec un multi : ${totalMultiBonus} (${multiBonusPct}%)</li>`;
+		statsHTML += "<br>";
+
+		// Puis, si on a effectivement des multiplicateurs, on les détaille
+		if (Object.keys(freq).length > 0) {
+		  // Tri des multiplicateurs par ordre croissant
+		  const sortedMultipliers = Object.keys(freq).sort((a, b) => Number(a) - Number(b));
+		  sortedMultipliers.forEach(mult => {
+			const count = freq[mult];
+			const pct = ((count / totalTours) * 100).toFixed(2);
+			statsHTML += `<li>Tours avec un bonus ${mult}x : ${count} (${pct}%)</li>`;
+		  });
+		}
+	  }
+
+	  document.getElementById("statsList").innerHTML = statsHTML;
+	}
+
+
 
     // ====================== LOGIQUE PRINCIPALE DU TOUR ======================
     function nouveauTour() {
