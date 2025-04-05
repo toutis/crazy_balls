@@ -275,7 +275,7 @@
     <label for="simulateDrawing">Simulation en temps réel du tirage boule par boule</label>
     <br>
     <label for="drawBallSpeed">Vitesse du tirage (ms) :</label>
-    <input type="number" id="drawBallSpeed" value="2000" min="10" max="5000" step="10">
+    <input type="number" id="drawBallSpeed" value="1000" min="10" max="5000" step="10">
   </div>
 
   <!-- Boules tirées -->
@@ -463,20 +463,25 @@
 		const prob = computeAllRedProbability(matchedSoFar, finalCount, drawIndex);
 		const probElem = document.getElementById(bonus + "-prob");
 		const chanceElem = document.getElementById(bonus + "-chance");
-		if (probElem && chanceElem) {
+
+		// Récupère le taux maximum déjà affiché (ou 0 s'il n'existe pas)
+		const maxProb = parseFloat(row.dataset.maxProb) || 0;
+
+		// Si le nouveau taux est supérieur au taux maximum, on met à jour
+		if (prob > maxProb && probElem && chanceElem) {
+		  row.dataset.maxProb = prob; // on enregistre le nouveau taux max
 		  if (prob > 0) {
 			probElem.textContent = "Taux de chance : " + (prob * 100).toFixed(2) + "%";
 			const chanceRatio = (1 / prob).toFixed(0);
 			chanceElem.textContent = "1 chance sur " + chanceRatio;
 		  } else {
-			// Enlève les informations si la probabilité est égale à 0
+			// Efface les infos si la probabilité est 0
 			probElem.textContent = "";
 			chanceElem.textContent = "";
 		  }
 		}
 	  });
 	}
-
 
     // ====================== MISE À JOUR DES BONUS ======================
     function updateBonusMatches(newNumber, multiBonus, multiValue, currentDrawIndex) {
