@@ -657,6 +657,16 @@
 
     // ====================== LOGIQUE PRINCIPALE DU TOUR ======================
     function nouveauTour() {
+	  ["coinflip", "cashhunt", "pachinko", "crazytime"].forEach(bonus => {
+    const row = document.getElementById(bonus + "-row");
+    row.dataset.maxProb = 0;  // on réinitialise la probabilité max stockée
+
+    const probElem = document.getElementById(bonus + "-prob");
+    const chanceElem = document.getElementById(bonus + "-chance");
+    if (probElem)  probElem.textContent = "";
+    if (chanceElem) chanceElem.textContent = "";
+  });
+	
       totalTours++;
       const tourDuration = 2 + Math.random();
       totalMinutesSpent += tourDuration;
