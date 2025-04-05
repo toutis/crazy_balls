@@ -26,6 +26,7 @@
     button:hover {
       background: #555;
     }
+
     /* Contrôle de la vitesse d'Auto Spin */
     #speedControl {
       margin: 10px;
@@ -82,13 +83,26 @@
     .drawn-ball.in-bonus {
       background: #ffcccc;
     }
+
     /* Conteneur principal pour les bonus */
     .tickets-container {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      gap: 20px;
+      /* on peut ajuster le gap si on veut plus ou moins d'espace */
+      gap: 0px; 
+      margin-bottom: 30px;
     }
+
+    /* Conteneur global pour chaque bonus (ticket + textes en dessous) */
+    .bonus-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      /* marge externe pour redonner l'espace entre les cartes */
+      margin: 0 10px;
+    }
+
     /* Chaque ticket */
     .ticket {
       width: 220px;
@@ -104,6 +118,7 @@
       justify-content: space-between;
       border: 2px solid transparent;
     }
+
     /* Contour doré extérieur pour All Red */
     .ticket.all-red {
       box-shadow: 0 0 0 5px gold;
@@ -176,6 +191,18 @@
       font-size: 2em;
       text-shadow: 1px 1px 2px #000;
     }
+
+    /* Zone des textes de probabilité (placés en dehors du ticket) */
+    .probability-info {
+      margin-top: 5px;
+      text-align: center;
+      font-size: 0.9em;
+      font-weight: bold;
+    }
+    .probability {
+      margin-bottom: 2px;
+    }
+
     /* Section des statistiques */
     #stats {
       margin-top: 30px;
@@ -248,7 +275,7 @@
     <label for="simulateDrawing">Simulation en temps réel du tirage boule par boule</label>
     <br>
     <label for="drawBallSpeed">Vitesse du tirage (ms) :</label>
-    <input type="number" id="drawBallSpeed" value="500" min="10" max="5000" step="10">
+    <input type="number" id="drawBallSpeed" value="2000" min="10" max="5000" step="10">
   </div>
 
   <!-- Boules tirées -->
@@ -259,21 +286,48 @@
 
   <!-- Tickets Bonus -->
   <div class="tickets-container">
-    <div class="ticket coinflip" id="coinflip-ticket">
-      <div class="title">COIN FLIP</div>
-      <div class="bonus-row" id="coinflip-row"></div>
+    <div class="bonus-container">
+      <div class="ticket coinflip" id="coinflip-ticket">
+        <div class="title">COIN FLIP</div>
+        <div class="bonus-row" id="coinflip-row"></div>
+      </div>
+      <div class="probability-info">
+        <div class="probability" id="coinflip-prob"></div>
+        <div class="chance" id="coinflip-chance"></div>
+      </div>
     </div>
-    <div class="ticket cashhunt" id="cashhunt-ticket">
-      <div class="title">CASH HUNT</div>
-      <div class="bonus-row" id="cashhunt-row"></div>
+
+    <div class="bonus-container">
+      <div class="ticket cashhunt" id="cashhunt-ticket">
+        <div class="title">CASH HUNT</div>
+        <div class="bonus-row" id="cashhunt-row"></div>
+      </div>
+      <div class="probability-info">
+        <div class="probability" id="cashhunt-prob"></div>
+        <div class="chance" id="cashhunt-chance"></div>
+      </div>
     </div>
-    <div class="ticket pachinko" id="pachinko-ticket">
-      <div class="title">PACHINKO</div>
-      <div class="bonus-row" id="pachinko-row"></div>
+
+    <div class="bonus-container">
+      <div class="ticket pachinko" id="pachinko-ticket">
+        <div class="title">PACHINKO</div>
+        <div class="bonus-row" id="pachinko-row"></div>
+      </div>
+      <div class="probability-info">
+        <div class="probability" id="pachinko-prob"></div>
+        <div class="chance" id="pachinko-chance"></div>
+      </div>
     </div>
-    <div class="ticket crazytime" id="crazytime-ticket">
-      <div class="title">CRAZY TIME</div>
-      <div class="bonus-row" id="crazytime-row"></div>
+
+    <div class="bonus-container">
+      <div class="ticket crazytime" id="crazytime-ticket">
+        <div class="title">CRAZY TIME</div>
+        <div class="bonus-row" id="crazytime-row"></div>
+      </div>
+      <div class="probability-info">
+        <div class="probability" id="crazytime-prob"></div>
+        <div class="chance" id="crazytime-chance"></div>
+      </div>
     </div>
   </div>
 
@@ -285,9 +339,9 @@
     <ul id="statsList"></ul>
   </div>
 
-  <!-- Historique des 50 derniers tours -->
+  <!-- Historique des 30 derniers tours -->
   <div id="history">
-    <h2>Historique des 50 derniers tours</h2>
+    <h2>Historique des 30 derniers tours</h2>
     <ul id="historyList"></ul>
   </div>
 
@@ -326,6 +380,7 @@
       return array;
     }
 
+    // Générer des nombres uniques qui ne se chevauchent pas
     function generateUniqueRandomNumbersNoOverlap(min, max, count, usedNumbers) {
       const available = [];
       for (let i = min; i <= max; i++) {
@@ -371,8 +426,60 @@
       return housesCount;
     }
 
+    // ====================== COMBINAISONS & PROBABILITÉ ======================
+    // Fonction de calcul des combinaisons C(n,k) (hypergéométrie)
+    function combination(n, k) {
+      if (k > n || k < 0) return 0;
+      if (k === 0 || k === n) return 1;
+      let result = 1;
+      for (let i = 1; i <= k; i++) {
+        result = result * (n - (k - i)) / i;
+      }
+      return result;
+    }
+
+    // Probabilité de finir All Red pour un bonus donné
+    // matchedSoFar = nb de boules bonus déjà tirées
+    // finalCount   = nb total de boules bonus nécessaires
+    // drawIndex    = nb de boules déjà tirées dans les 20
+    function computeAllRedProbability(matchedSoFar, finalCount, drawIndex) {
+      const needed = finalCount - matchedSoFar;
+      const drawsRemaining = 20 - drawIndex;  // nb de boules restantes
+      if (needed <= 0) return 1;             // déjà All Red
+      if (needed > drawsRemaining) return 0; // impossible
+
+      const totalRemainingBalls = 60 - drawIndex;
+      return combination(totalRemainingBalls - needed, drawsRemaining - needed)
+             / combination(totalRemainingBalls, drawsRemaining);
+    }
+
+    // Met à jour les pourcentages et "1 chance sur ..." pour chaque bonus
+	function updateAllBonusProbabilities(drawIndex) {
+	  const bonusKeys = ["coinflip", "cashhunt", "pachinko", "crazytime"];
+	  bonusKeys.forEach(bonus => {
+		const row = document.getElementById(bonus + "-row");
+		const finalCount = parseInt(row.dataset.finalCount) || 0;
+		const matchedSoFar = parseInt(row.dataset.matchCount) || 0;
+		const prob = computeAllRedProbability(matchedSoFar, finalCount, drawIndex);
+		const probElem = document.getElementById(bonus + "-prob");
+		const chanceElem = document.getElementById(bonus + "-chance");
+		if (probElem && chanceElem) {
+		  if (prob > 0) {
+			probElem.textContent = "Taux de chance : " + (prob * 100).toFixed(2) + "%";
+			const chanceRatio = (1 / prob).toFixed(0);
+			chanceElem.textContent = "1 chance sur " + chanceRatio;
+		  } else {
+			// Enlève les informations si la probabilité est égale à 0
+			probElem.textContent = "";
+			chanceElem.textContent = "";
+		  }
+		}
+	  });
+	}
+
+
     // ====================== MISE À JOUR DES BONUS ======================
-    function updateBonusMatches(newNumber, multiBonus, multiValue) {
+    function updateBonusMatches(newNumber, multiBonus, multiValue, currentDrawIndex) {
       const bonusKeys = ["coinflip", "cashhunt", "pachinko", "crazytime"];
       bonusKeys.forEach(bonus => {
         const row = document.getElementById(bonus + "-row");
@@ -393,6 +500,7 @@
           }
         });
       });
+      updateAllBonusProbabilities(currentDrawIndex + 1);
     }
 
     // ====================== HISTORIQUE ======================
@@ -416,7 +524,7 @@
     function addHistoryRecord(round, triggeredBonuses, multiValue, multiBonus) {
       const record = { round, triggeredBonuses, multiValue, multiBonus };
       historyRecords.push(record);
-      if (historyRecords.length > 50) {
+      if (historyRecords.length > 30) {
         historyRecords.shift();
       }
       updateHistoryDisplay();
@@ -450,10 +558,11 @@
       remainingLabel.textContent = `Boules restantes (20/20)`;
 
       const autoSpinSpeed = parseInt(document.getElementById("autoSpinSpeed").value) || 200;
+      const drawSpeed = parseInt(document.getElementById("drawBallSpeed").value) || 200;
+      const drawnContainer = document.getElementById("drawn-balls");
+      drawnContainer.innerHTML = "";
 
       if(autoSpinSpeed < 50) {
-        const drawnContainer = document.getElementById("drawn-balls");
-        drawnContainer.innerHTML = "";
         drawnBalls.forEach(number => {
           const div = document.createElement("div");
           div.className = "drawn-ball";
@@ -462,7 +571,7 @@
             div.classList.add("in-bonus");
           }
           drawnContainer.appendChild(div);
-          updateBonusMatches(number, multiBonus, multiValue);
+          updateBonusMatches(number, multiBonus, multiValue, 0);
         });
         remainingLabel.textContent = "Boules restantes (0/20)";
         let triggeredBonuses = [];
@@ -478,9 +587,6 @@
         return;
       }
 
-      const drawSpeed = parseInt(document.getElementById("drawBallSpeed").value) || 200;
-      const drawnContainer = document.getElementById("drawn-balls");
-      drawnContainer.innerHTML = "";
       let i = 0;
       const intervalId = setInterval(() => {
         if (i < drawnBalls.length) {
@@ -494,7 +600,7 @@
           drawnContainer.appendChild(div);
           const remaining = (drawnBalls.length - (i + 1));
           remainingLabel.textContent = `Boules restantes (${remaining}/${drawnBalls.length})`;
-          updateBonusMatches(number, multiBonus, multiValue);
+          updateBonusMatches(number, multiBonus, multiValue, i);
           i++;
         } else {
           clearInterval(intervalId);
@@ -616,6 +722,7 @@
           }
           row.appendChild(ball);
         });
+
         if (!simulateMode) {
           if (matchCount === finalCount) {
             stats[bonus].allRed++;
@@ -634,7 +741,6 @@
         }
       }
 
-      // Pour le mode non-simulation, on met à jour les compteurs via currentTurnAllRedCount
       if (!simulateMode) {
         if (currentTurnAllRedCount > 0) winningTours++;
         if (currentTurnAllRedCount === 2) twoBonusTours++;
@@ -650,7 +756,6 @@
 
       if (simulateMode) {
         simulateDrawnBalls(drawnBalls, usedNumbers, multiBonus, multiValue, function(triggeredBonusesSim) {
-          // Mise à jour pour le mode simulation avec les bonus déclenchés
           const currentSimBonusCount = triggeredBonusesSim.length;
           if (currentSimBonusCount > 0) winningTours++;
           if (currentSimBonusCount === 2) twoBonusTours++;
